@@ -3,8 +3,6 @@ package com.chatbot.voicebot.service;
 import io.github.cdimascio.dotenv.Dotenv;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
-import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -14,21 +12,26 @@ public class TtsService {
     private final String apiKey;
 
     public TtsService() {
-        Dotenv dotenv = Dotenv.load();  // ✅ .env 파일 읽기
-        this.apiKey = dotenv.get("OPENAI_API_KEY");  // ✅ 변수 읽기
+        Dotenv dotenv = Dotenv.load();
+        this.apiKey = dotenv.get("OPENAI_API_KEY");
     }
 
     public byte[] speak(String text, String voiceStyle) throws Exception {
         OkHttpClient client = new OkHttpClient();
 
-        JSONObject json = new JSONObject();
-        json.put("model", "tts-1"); // 또는 "tts-1-hd"
-        json.put("input", text);
-        json.put("voice", voiceStyle); // nova, onyx 등
-        json.put("response_format", "wav");
+        // OpenAI TTS API 설정
+        String json = new okhttp3.internal.platform.Platform().getClass().getSimpleName(); // placeholder 제거 필요
+        String requestJson = String.format("""
+            {
+              "model": "tts-1",
+              "input": "%s",
+              "voice": "%s",
+              "response_format": "wav"
+            }
+            """, text.replace("\"", "\\\""), voiceStyle);
 
         RequestBody body = RequestBody.create(
-                json.toString(),
+                requestJson,
                 MediaType.parse("application/json")
         );
 
@@ -41,9 +44,10 @@ public class TtsService {
 
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                throw new Exception("TTS API 호출 실패: " + response.message());
+                throw new Exception("TTS 생성 실패: " + response.code() + " - " + response.body().string());
             }
-            return response.body().bytes(); // 오디오 바이너리 데이터
+
+            return response.body().bytes();
         }
     }
 }

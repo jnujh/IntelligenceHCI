@@ -4,10 +4,8 @@ import io.github.cdimascio.dotenv.Dotenv;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -19,18 +17,19 @@ public class WhisperService {
     private final String apiKey;
 
     public WhisperService() {
-        Dotenv dotenv = Dotenv.load();  // ✅ .env 파일 읽기
-        this.apiKey = dotenv.get("OPENAI_API_KEY");  // ✅ 변수 읽기
+        Dotenv dotenv = Dotenv.load();
+        this.apiKey = dotenv.get("OPENAI_API_KEY");
     }
 
     public String transcribe(MultipartFile audioFile) throws IOException {
+        // 1. MultipartFile → File로 저장
         File tempFile = convertMultipartFileToFile(audioFile);
 
+        // 2. Whisper API 호출
         OkHttpClient client = new OkHttpClient();
-        MediaType mediaType = MediaType.parse("audio/wav");
+        MediaType mediaType = MediaType.parse(audioFile.getContentType());  // webm 등 자동 처리
 
         RequestBody fileBody = RequestBody.create(tempFile, mediaType);
-
         MultipartBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("file", tempFile.getName(), fileBody)
@@ -46,24 +45,20 @@ public class WhisperService {
         try (Response response = client.newCall(request).execute()) {
             String body = response.body().string();
             if (!response.isSuccessful()) {
-                throw new IOException("Whisper API 호출 실패: " + response.code() + " - " + response.message() + "\nBody: " + body);
+                throw new IOException("Whisper API 호출 실패: " + response.code() + " - " + response.message() + "\n" + body);
             }
-            log.info("Whisper 응답 본문: {}", body);
             JSONObject json = new JSONObject(body);
             return json.getString("text");
-        } catch (Exception e) {
-            log.error("STT 처리 실패", e);
-            throw new IOException("Whisper API 호출 실패");
         } finally {
-            tempFile.delete(); // 임시 파일 삭제
+            tempFile.delete();  // 임시 파일 삭제
         }
     }
 
     private File convertMultipartFileToFile(MultipartFile multipart) throws IOException {
-        File convFile = File.createTempFile("upload_", ".wav");
-        try (FileOutputStream fos = new FileOutputStream(convFile)) {
+        File file = File.createTempFile("recorded-", ".webm");
+        try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(multipart.getBytes());
         }
-        return convFile;
+        return file;
     }
 }

@@ -2,67 +2,54 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8" />
-    <title>대화형 음성 챗봇</title>
+    <title>실시간 음성 챗봇</title>
     <style>
         body {
           font-family: "Segoe UI", sans-serif;
           max-width: 600px;
-          margin: 40px auto;
-          background-color: #f8f9fa;
+          margin: 50px auto;
           padding: 30px;
+          background-color: #f4f4f4;
           border-radius: 10px;
-          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-        }
-        h2 {
+          box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
           text-align: center;
-          color: #343a40;
         }
-        .voice-style {
-          display: flex;
-          justify-content: space-around;
-          margin-bottom: 20px;
+
+        h2 {
+          margin-bottom: 30px;
+          color: #333;
         }
+
         .voice-style button {
-          padding: 10px 15px;
+          margin: 5px;
+          padding: 10px 16px;
+          border-radius: 6px;
           border: none;
-          border-radius: 8px;
           cursor: pointer;
-          font-weight: bold;
-          color: white;
           background-color: #6c757d;
-          transition: 0.2s;
+          color: white;
+          font-weight: bold;
         }
+
         .voice-style button.selected {
           background-color: #0d6efd;
         }
-        #upload-section {
-          margin: 20px 0;
-          text-align: center;
-        }
-        input[type="file"] {
-          padding: 8px;
-          border-radius: 5px;
-          border: 1px solid #ced4da;
-        }
-        button#sendButton {
-          margin-top: 20px;
-          width: 100%;
-          padding: 12px;
-          background-color: #198754;
+
+        #recordButton {
+          margin-top: 30px;
+          padding: 15px 30px;
+          font-size: 16px;
+          background-color: #dc3545;
           color: white;
           border: none;
-          border-radius: 6px;
-          font-size: 16px;
-          transition: all 0.2s;
+          border-radius: 8px;
+          cursor: pointer;
         }
-        button#sendButton:hover {
-          background-color: #157347;
-          box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+
+        #recordButton:hover {
+          background-color: #bb2d3b;
         }
-        audio {
-          margin-top: 30px;
-          width: 100%;
-        }
+
         .loader {
           margin: 30px auto;
           border: 6px solid #f3f3f3;
@@ -73,78 +60,135 @@
           animation: spin 1s linear infinite;
           display: none;
         }
+
+        #timer {
+          font-size: 16px;
+          margin-top: 10px;
+          color: #555;
+        }
+
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
+
+        audio {
+          margin-top: 20px;
+          width: 100%;
+        }
     </style>
 </head>
 <body>
-<h2>🎙️ 대화형 음성 챗봇</h2>
+<h2>🎤 실시간 음성 챗봇</h2>
 
 <div class="voice-style" id="voiceOptions">
-    <button data-voice="nova">밝은 말투</button>
-    <button data-voice="fable">감정적인 말투</button>
-    <button data-voice="shimmer">따뜻한 말투</button>
+    <button class="selected" data-voice="nova">밝은 말투</button>
+    <button data-voice="fable">감정적인</button>
+    <button data-voice="shimmer">따뜻한</button>
 </div>
 
-<div id="upload-section">
-    <input type="file" id="audioFile" accept="audio/*" />
-</div>
-
-<button id="sendButton" onclick="sendVoice()">응답 받기</button>
+<button id="recordButton">🔴 녹음 시작</button>
+<div id="timer"></div>
 
 <div id="loader" class="loader"></div>
 <audio id="audioPlayer" controls></audio>
 
 <script>
     let selectedVoice = "nova";
+    let mediaRecorder;
+    let audioChunks = [];
+    let recording = false;
+    let timerInterval;
+    let elapsedSeconds = 0;
 
-    document.querySelectorAll("#voiceOptions button").forEach((btn) => {
+    // 말투 선택
+    document.querySelectorAll("#voiceOptions button").forEach(btn => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll("#voiceOptions button").forEach((b) => b.classList.remove("selected"));
+        document.querySelectorAll("#voiceOptions button").forEach(b => b.classList.remove("selected"));
         btn.classList.add("selected");
-        selectedVoice = btn.getAttribute("data-voice");
+        selectedVoice = btn.dataset.voice;
       });
     });
 
-    async function sendVoice() {
-      const file = document.getElementById("audioFile").files[0];
-      if (!file) {
-        alert("먼저 음성 파일을 선택해주세요.");
+    // 타이머 시작
+    function startTimer() {
+      elapsedSeconds = 0;
+      document.getElementById("timer").textContent = "⏱ 녹음 시간: 0초";
+      timerInterval = setInterval(() => {
+        elapsedSeconds++;
+        document.getElementById("timer").textContent = `⏱ 녹음 시간: ${elapsedSeconds}초`;
+      }, 1000);
+    }
+
+    // 타이머 중지
+    function stopTimer() {
+      clearInterval(timerInterval);
+      document.getElementById("timer").textContent = "";
+    }
+
+    document.getElementById("recordButton").addEventListener("click", async () => {
+      const recordButton = document.getElementById("recordButton");
+
+      if (!navigator.mediaDevices) {
+        alert("브라우저가 마이크를 지원하지 않습니다.");
         return;
       }
 
-      const formData = new FormData();
-      formData.append("audio", file);
-      formData.append("voice", selectedVoice);
+      if (!recording) {
+        // 녹음 시작
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
 
-      document.getElementById("loader").style.display = "block";
-      document.getElementById("audioPlayer").style.display = "none";
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
-      try {
-        const response = await fetch("/api/stt", {
-          method: "POST",
-          body: formData
-        });
+        mediaRecorder.onstop = async () => {
+          stopTimer();
 
-        if (!response.ok) {
-          alert("응답 생성에 실패했습니다.");
-          return;
-        }
+          recordButton.textContent = "⏳ 응답 중...";
+          recordButton.disabled = true;
 
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const player = document.getElementById("audioPlayer");
-        player.src = audioUrl;
-        player.style.display = "block";
+          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+          const formData = new FormData();
+          formData.append("audio", audioBlob, "voice.webm");
+          formData.append("voice", selectedVoice);
 
-      } catch (err) {
-        alert("오류가 발생했습니다: " + err.message);
-      } finally {
-        document.getElementById("loader").style.display = "none";
+          document.getElementById("loader").style.display = "block";
+          document.getElementById("audioPlayer").style.display = "none";
+
+          try {
+            const res = await fetch("/api/stt", {
+              method: "POST",
+              body: formData
+            });
+
+            const blob = await res.blob();
+            const audioURL = URL.createObjectURL(blob);
+            const player = document.getElementById("audioPlayer");
+            player.src = audioURL;
+            player.style.display = "block";
+            player.play();
+
+          } catch (err) {
+            alert("응답 처리 중 오류가 발생했습니다.");
+          } finally {
+            document.getElementById("loader").style.display = "none";
+            recordButton.textContent = "🔴 다시 녹음";
+            recordButton.disabled = false;
+          }
+        };
+
+        mediaRecorder.start();
+        startTimer();
+        recordButton.textContent = "⏹️ 녹음 중지";
+        recording = true;
+
+      } else {
+        // 녹음 종료
+        mediaRecorder.stop();
+        recording = false;
       }
-    }
+    });
 </script>
 </body>
 </html>

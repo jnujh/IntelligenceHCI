@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -15,29 +14,26 @@ public class GptService {
     private final String apiKey;
 
     public GptService() {
-        Dotenv dotenv = Dotenv.load();  // ✅ .env 파일 읽기
-        this.apiKey = dotenv.get("OPENAI_API_KEY");  // ✅ 변수 읽기
+        Dotenv dotenv = Dotenv.load();
+        this.apiKey = dotenv.get("OPENAI_API_KEY");
     }
 
-    public String ask(String userInput) throws Exception {
+    public String ask(String userText) throws Exception {
         OkHttpClient client = new OkHttpClient();
 
-        // GPT 메시지 형식 구성
-        JSONObject message = new JSONObject();
-        message.put("role", "user");
-        message.put("content", userInput);
-
+        // role 지시 포함: 답변은 7초 이내로 짧게 응답
         JSONArray messages = new JSONArray();
-        messages.put(message);
+        messages.put(new JSONObject().put("role", "system")
+                .put("content", "답변은 7초 이내 분량으로 짧고 친절하게 말해줘."));
+        messages.put(new JSONObject().put("role", "user")
+                .put("content", userText));
 
         JSONObject json = new JSONObject();
-        json.put("model", "gpt-4o"); // 최신 모델 gpt-4o 또는 gpt-3.5-turbo 가능
+        json.put("model", "gpt-4o");
         json.put("messages", messages);
 
-        RequestBody body = RequestBody.create(
-                json.toString(),
-                MediaType.parse("application/json")
-        );
+        RequestBody body = RequestBody.create(json.toString(),
+                MediaType.parse("application/json"));
 
         Request request = new Request.Builder()
                 .url("https://api.openai.com/v1/chat/completions")
@@ -47,10 +43,11 @@ public class GptService {
                 .build();
 
         try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                throw new Exception("GPT API 호출 실패: " + response.message());
-            }
             String responseBody = response.body().string();
+            if (!response.isSuccessful()) {
+                throw new Exception("GPT 응답 실패: " + response.code() + " - " + responseBody);
+            }
+
             JSONObject result = new JSONObject(responseBody);
             return result.getJSONArray("choices")
                     .getJSONObject(0)

@@ -23,29 +23,28 @@ public class VoiceChatController {
     private final TtsService ttsService;
 
     @PostMapping("/stt")
-    public ResponseEntity<Resource> handleVoiceRequest(
+    public ResponseEntity<Resource> handleVoice(
             @RequestParam("audio") MultipartFile audioFile,
-            @RequestParam("voice") String voice
+            @RequestParam("voice") String voiceStyle
     ) throws Exception {
 
-        log.info("▶ 음성 파일 수신: {}, 선택 말투: {}", audioFile.getOriginalFilename(), voice);
+        log.info("▶ 음성 파일 수신: {}, 말투: {}", audioFile.getOriginalFilename(), voiceStyle);
 
-        // 1. 음성 → 텍스트 (STT)
+        // 1. 음성 → 텍스트 변환 (STT)
         String userText = whisperService.transcribe(audioFile);
-        log.info("▶ 변환된 텍스트: {}", userText);
+        log.info("🗣️ STT 결과: {}", userText);
 
-        // 2. 텍스트 → GPT 응답
-        String responseText = gptService.ask(userText);
-        log.info("▶ GPT 응답: {}", responseText);
+        // 2. GPT 응답 생성
+        String gptResponse = gptService.ask(userText);
+        log.info("💬 GPT 응답: {}", gptResponse);
 
-        // 3. GPT 응답 → TTS 음성
-        byte[] audioBytes = ttsService.speak(responseText, voice);
-        log.info("▶ 음성 변환 완료 (bytes): {}", audioBytes.length);
+        // 3. TTS 음성 생성
+        byte[] audioBytes = ttsService.speak(gptResponse, voiceStyle);
+        log.info("🔊 TTS 음성 생성 완료 ({} bytes)", audioBytes.length);
 
-        // 4. 오디오 파일 반환
-        ByteArrayResource resource = new ByteArrayResource(audioBytes);
+        // 4. 음성 파일 반환
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("audio/wav"))
-                .body(resource);
+                .body(new ByteArrayResource(audioBytes));
     }
 }
