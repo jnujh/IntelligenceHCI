@@ -45,6 +45,11 @@ ChatGPT(GPT-4o)를 통해 답변을 생성하고,
 
 ---
 
+## 시스템 흐름 구성도
+![213856이지훈 대화형chatbot 과제 drawio (2)](https://github.com/user-attachments/assets/d17e62b3-8f50-40d7-9c93-601bd79cda03)
+
+---
+
 ## 🔐 API Key 보안
 
 - API 키는 `.env` 파일에 저장
@@ -54,7 +59,4 @@ ChatGPT(GPT-4o)를 통해 답변을 생성하고,
 ```env
 # .env
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxx
-
-## 시스템 흐름 구성도
-![213856이지훈 대화형chatbot 과제 drawio (2)](https://github.com/user-attachments/assets/d17e62b3-8f50-40d7-9c93-601bd79cda03)
 
