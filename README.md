@@ -8,7 +8,7 @@ ChatGPT(GPT-4o)를 통해 답변을 생성하고,
 
 ---
 
-## 🚀 시연 흐름
+## 🚀 시스템 흐름
 
 1. 브라우저에서 녹음 버튼 클릭
 2. 사용자가 마이크로 질문
@@ -21,7 +21,7 @@ ChatGPT(GPT-4o)를 통해 답변을 생성하고,
 
 ---
 
-## 🧩 사용한 API
+## 🧩 사용 API
 
 | 단계 | API | 설명 |
 |------|-----|------|
@@ -54,3 +54,7 @@ ChatGPT(GPT-4o)를 통해 답변을 생성하고,
 ```env
 # .env
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxx
+
+## 시스템 흐름 구성도
+![213856이지훈 대화형chatbot 과제 drawio (2)](https://github.com/user-attachments/assets/d17e62b3-8f50-40d7-9c93-601bd79cda03)
+
